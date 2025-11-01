@@ -87,7 +87,7 @@ pub struct Config {
 // --------------------------------------------------
 pub fn get_args() -> MyResult<Config> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
-		.version(long_version_static())
+        .version(long_version_static())
         .author("Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>")
         .about("generate fix width printing for LaTeX from plain text")
         .arg(

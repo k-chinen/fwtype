@@ -1,6 +1,6 @@
 use std::env;
 use std::process::Command;
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
 fn main() {
     // --- Gitの短縮ハッシュ ---
@@ -18,9 +18,13 @@ fn main() {
         .ok()
         .and_then(|v| v.parse::<i64>().ok())
     {
-        Some(epoch) => OffsetDateTime::from_unix_timestamp(epoch).unwrap_or_else(|_| OffsetDateTime::now_utc()),
+        Some(epoch) => {
+            OffsetDateTime::from_unix_timestamp(epoch).unwrap_or_else(|_| OffsetDateTime::now_utc())
+        }
         None => OffsetDateTime::now_utc(),
     };
-    let build_date = build_dt.format(&Rfc3339).unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string());
+    let build_date = build_dt
+        .format(&Rfc3339)
+        .unwrap_or_else(|_| "1970-01-01T00:00:00Z".to_string());
     println!("cargo:rustc-env=BUILD_DATE={}", build_date);
 }
