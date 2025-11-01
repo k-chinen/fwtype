@@ -36,10 +36,6 @@ fn long_version() -> String {
     }
 }
 
-pub fn long_version_static() -> &'static str {
-    Box::leak(long_version().into_boxed_str())
-}
-
 pub const DIME_AUTO: usize = 99999;
 
 fn dime_auto_str() -> &'static str {
@@ -86,10 +82,12 @@ pub struct Config {
 
 // --------------------------------------------------
 pub fn get_args() -> MyResult<Config> {
+    let long: &'static str = Box::leak(long_version().into_boxed_str());
+
     let matches = App::new(env!("CARGO_PKG_NAME"))
-		.version(long_version_static())
+        .version(long)
         .author("Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>")
-        .about("generate fix width printing for LaTeX from plain text")
+        .about("generate fix width printing for LaTeX from plane text")
         .arg(
             Arg::with_name("linenumoffset")
                 .short("N")

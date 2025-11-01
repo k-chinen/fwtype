@@ -1,9 +1,12 @@
 [package]
 name = "fwtype"
-version = "0.3.0"
+version = "0.3.3"
 edition = "2024"
 
 [dependencies]
 clap = "2.33"
 #unicode-normalization = "0.1.24"
 #unicode-segmentation = "1.12.0"
+
+[build-dependencies]
+time = { version = "0.3", features = ["macros", "formatting"] }
