@@ -1,7 +1,5 @@
 //
-// fix width typing for TeX picture-env.
-//
-
+// fwtype --- fix width typing for TeX picture-env.
 //
 // this code does not support combinatin of UTF-8.
 // you should use 'nkf' or simular programs:
@@ -12,6 +10,7 @@ use clap::{App, Arg};
 use std::error::Error;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
+use unicode_segmentation::UnicodeSegmentation;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -60,6 +59,230 @@ impl PartialEq for CharSize {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum TokenKind {
+    _Text(String),
+    Escape(String),
+    Ascii(String),
+    Misc(String),
+    Hole(String),
+    Skip,
+    _Nop,
+}
+
+#[derive(Debug, Clone)]
+pub struct Token {
+    kind:   TokenKind,
+    width:  isize,
+}
+
+impl TokenKind {
+    pub fn fmt(&self) -> String {
+        match &self {
+            TokenKind::_Text(s) =>  format!("t{:?}", s),
+            TokenKind::Escape(s) => format!("e{:?}", s),
+            TokenKind::Ascii(s) =>  format!("a{:?}", s),
+            TokenKind::Misc(s) =>   format!("m{:?}", s),
+            TokenKind::Hole(s) =>   format!("h{:?}", s),
+            TokenKind::Skip =>      format!("skip"),
+            TokenKind::_Nop =>      format!("nop"),
+        }
+    }
+}
+
+/*
+*/
+impl Token {
+    pub fn fmt(&self) -> String {
+        let k = &self.kind.fmt();
+        format!("{}{}", k, &self.width)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Row {
+    lineno: isize,
+    width:  isize,
+    setret: bool,
+    tokens: Vec<Token>,
+}
+
+impl Row {
+    pub fn clear(&mut self) {
+        self.lineno = -1;
+        self.width  = -1;
+        self.setret = false;
+        self.tokens.clear();
+    }
+    pub fn fmt(self) -> String {
+        let pre = format!("{:5}:{:<3}", self.lineno, self.width);
+        let mark = if self.setret { "*" } else { "." };
+        let tks : Vec<String> = self.tokens.iter()
+            .map(|t| t.fmt())
+            .collect::<Vec<_>>();
+        let joined = tks.join(" ");
+        format!("{} {} {}", pre, mark, joined)
+    }
+    fn calcwidth(&mut self) {
+        let mut sum: isize = 0;
+        for tk in &self.tokens {
+            sum += tk.width;
+        }
+        self.width = sum;
+    }
+}
+
+type RowChunk = Vec<Row>;
+
+/*
+fn fmt_row(row: &Row) -> String {
+    row.tokens.iter()
+        .map(|t| t.fmt())
+        .collect::<Vec<_>>()
+        .join(",")
+}
+*/
+
+/*
+fn eprint_row(prefix: &str, row: &Row) {
+    if prefix != "" {
+        eprint!("{} ", prefix);
+    }
+    let wstr = format!("<{}>", row.width);
+    eprint!("{:>5} ", wstr);
+    let rmb = row.tokens.iter()
+                .map(|t| t.fmt())
+                .collect::<Vec<_>>()
+                .join(",");
+    eprintln!("|{}|", rmb);
+}
+
+fn eprint_chunk(prefix: &str, chunk: &RowChunk) {
+    for (i, row) in chunk.iter().enumerate() {
+        if prefix != "" {
+            eprint!("{} ", prefix);
+        }
+        let pre = format!("{:>3}", i);
+        eprint_row(&pre, row);
+    }
+}
+*/
+
+/*
+fn fmt_rowchunk(chunk: &RowChunk) -> String {
+    chunk.iter()
+        .enumerate()
+        .map(|(i, row)| format!("Row {}: {}", i, fmt_row(row)))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+*/
+
+/*
+fn view_chunk(prefix: &str, chunk: &RowChunk) {
+    let mut i = 0;
+    for r in chunk {
+        let dmy = r.clone().fmt();
+        eprintln!("{} {} |{}|", prefix, i, dmy);
+        i += 1;
+    }
+}
+*/
+
+fn parse_line(rawstr: &str, tabstop: isize, wcolumn: isize) -> RowChunk {
+    let mut iter = rawstr.graphemes(true).peekable();
+    let mut _c = 0;
+    let mut x = 0;
+    let mut _y = 0;
+    let mut tk: Token;
+    let mut rchk : RowChunk = Vec::new();
+    let mut currow : Row = Row {lineno: -1, width: -1,
+            setret: false, tokens: Vec::new() };
+    loop {
+        let Some(q) = iter.next() else { break };
+
+        if q.is_ascii() {
+
+            if q == "\t" {
+                let nx = ((x) / tabstop) * tabstop + tabstop;
+                tk = Token { kind: TokenKind::Skip, width: nx-x};
+            }
+            else if q == "\x1b" {
+                let mut seq = String::from(q);
+                while let Some(&next) = iter.peek() {
+                    seq.push_str(next); 
+                    iter.next();
+                    if next.ends_with('m') {
+                        break;
+                    }
+                }
+                tk = Token { kind: TokenKind::Escape(seq), width: 1};
+            }
+            else if q == "\x1d" {
+                let Some(q2) = iter.next() else { break };
+                tk = Token { kind: TokenKind::Hole(q2.to_string()), width: 4};
+            }   
+            else {
+                tk = Token { kind: TokenKind::Ascii(q.to_string()), width: 1};
+           }
+        }
+        else {
+            tk = Token { kind: TokenKind::Misc(q.to_string()), width: 2};
+        }
+
+// eprintln!("c {} x {} y {} tk.width {} tk |{}|", c, x, y, tk.width, tk.fmt());
+// eprintln!("x {} tk.width {} {} vs {}", x, tk.width, x+tk.width, wcolumn);
+        if x+tk.width>wcolumn {
+/*
+eprintln!("overrun!!!");
+*/
+            currow.setret = true;
+            currow.calcwidth();
+            rchk.push(currow.clone());
+
+            currow.tokens.clear();
+            currow.clear();
+            x = 0;
+
+            _y += 1;
+        }
+        else {
+        }
+        x += tk.width;
+        currow.tokens.push(tk);
+
+/*
+eprint_row("cur", &currow);
+*/
+
+/*
+println!("currow {}", fmt_row(&currow));
+        println!("currow {:?}", currow);
+*/
+
+        _c += 0;
+    }
+
+    if ! currow.tokens.is_empty() {
+/*
+println!("push currow {}", fmt_row(&currow));
+*/
+        currow.calcwidth();
+        rchk.push(currow.clone());
+        
+        currow.tokens.clear();
+
+        _y += 1;
+    }
+
+/*
+    eprint_chunk("rchk ", &rchk);
+    view_chunk(  "rchk ", &rchk);
+*/
+
+    rchk
+}
+
 #[derive(Debug)]
 pub struct Config {
     files: Vec<String>,
@@ -69,7 +292,8 @@ pub struct Config {
     sepmargin: usize,
     frames: usize,
     tabstop: usize,
-    wchars: usize,
+    wlimit: usize,
+    _llimit: usize,
     basedrift_a: isize,
     gridhpitch: usize,
     gridvpitch: usize,
@@ -146,14 +370,25 @@ pub fn get_args() -> MyResult<Config> {
                 .help("grid pitch in vertical")
                 .default_value("5"),
         )
+
         .arg(
-            Arg::with_name("wchars")
-                .short("w")
-                .long("wchars")
+            Arg::with_name("llimit")
+                .short("l")
+                .long("llimit")
                 .takes_value(true)
-                .help("width of line")
+                .help("line limit")
+                .default_value("9999"),
+        )
+
+        .arg(
+            Arg::with_name("wlimit")
+                .short("w")
+                .long("wlimit")
+                .takes_value(true)
+                .help("width limit; column per line")
                 .default_value("64"),
         )
+
         .arg(
             Arg::with_name("basedrift_a")
                 .short("b")
@@ -273,11 +508,17 @@ pub fn get_args() -> MyResult<Config> {
         .transpose()
         .map_err(|e| format!("illegal tabstop -- {}", e))?;
 
-    let wchars = matches
-        .value_of("wchars")
+    let llimit = matches
+        .value_of("llimit")
         .map(parse_positive_int)
         .transpose()
-        .map_err(|e| format!("illegal wchars -- {}", e))?;
+        .map_err(|e| format!("illegal llimit -- {}", e))?;
+
+    let wlimit = matches
+        .value_of("wlimit")
+        .map(parse_positive_int)
+        .transpose()
+        .map_err(|e| format!("illegal wlimit -- {}", e))?;
 
     let basedrift_a = matches
         .value_of("basedrift_a")
@@ -331,7 +572,8 @@ pub fn get_args() -> MyResult<Config> {
         outmargin: outmargin.unwrap(),
         sepmargin: sepmargin.unwrap(),
         tabstop: tabstop.unwrap(),
-        wchars: wchars.unwrap(),
+        _llimit: llimit.unwrap(),
+        wlimit: wlimit.unwrap(),
         basedrift_a: basedrift_a.unwrap() as isize,
         frames: frames.unwrap(),
         gridhpitch: gridhpitch.unwrap(),
@@ -347,6 +589,7 @@ pub fn get_args() -> MyResult<Config> {
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn fwtype(
     fp: &mut dyn BufRead,
     csize: &CharSize,
@@ -355,7 +598,7 @@ fn fwtype(
     sepmargin: usize,
     frames: usize,
     tabstop: usize,
-    wchars: usize,
+    wlimit: usize,
     basedrift_a: isize,
     gridhpitch: usize,
     gridvpitch: usize,
@@ -367,103 +610,74 @@ fn fwtype(
     linenumoffset: usize,
     linenumwidth: usize,
 ) {
-    let nchars;
+//    let nchars;
+/*
     let mut linec;
     let mut rowc;
     let mut maxline = 0;
-    let mut maxchars = 0;
     let mut cont: Vec<String> = vec![];
+*/
+    let mut maxwidth= 0;
 
     //  let cmdchars = r"#$%&^_{}\\|~";
     let cmdchars = "#$%&^_{}\\~";
 
-    let mut num_overrun = 0;
 
     eprintln!(
         "numbering {} width {} offset {}",
         donumbering, linenumwidth, linenumoffset
     );
 
+    let mut fullrow: RowChunk = Vec::new();
+
+    /*
+     * phase 1: estimate columns and rows
+     */
+/*
     linec = 0;
     rowc = 0;
-    for (line_num, line_result) in fp.lines().enumerate() {
+*/
+
+    let mut cline = 0;
+    let mut crow  : isize = 0;
+
+    for (_line_num, line_result) in fp.lines().enumerate() {
         let line = line_result.unwrap();
+/*
+eprintln!("; line |{}|", line);
+*/
 
-        linec = linec + 1;
-        rowc = rowc + 1;
-
-        let mut x = 0;
-        //        for ch in line.chars() {
-        let mut ch: char;
-        let mut p = 0;
-        loop {
-            if line.len() <= 0 {
-                break;
+        let chunk = parse_line(&line, tabstop as isize, wlimit as isize);
+/*
+eprintln!("; tokens {:?}", tokens);
+*/
+        cline += 1;
+        let mut r_per_i = 0;
+        for mut x in chunk {
+            if x.width > maxwidth{
+                maxwidth = x.width;
             }
-
-            if let Some(foo) = line[p..].chars().next() {
-                ch = foo;
-                p += ch.len_utf8();
-            } else {
-                break;
+            if r_per_i==0 {
+                x.lineno = cline as isize;
             }
-
-            if ch.is_ascii() {
-                // tabstop
-                if ch == '\t' {
-                    x = ((x) / tabstop) * tabstop + tabstop;
-                } else if ch == '\x1d' {
-                    if line.len() <= 0 {
-                        break;
-                    }
-                    if let Some(label) = line[p..].chars().next() {
-                        p += label.len_utf8();
-                        x = x + 3;
-                    }
-                } else {
-                    x = x + 1;
-                }
-            } else {
-                x = x + 2;
+            else {
             }
+            fullrow.push(x);
+            crow += 1;
+            r_per_i += 1;
         }
-
-        let linelen = x;
-
-        if linelen >= (wchars - 1) {
-            let e = (linelen + wchars - 1) / wchars;
-            /*
-                        eprintln!("\t line_num {} {} linelen {} wchars {} -> e {}",
-                            line_num, line_num+1, linelen, wchars, e);
-            */
-            /*
-                        let k = linelen / wchars;
-                        eprintln!("\t line_num {} {} linelen {} wchars {} -> k {} e {}",
-                            line_num, line_num+1, linelen, wchars, k, e);
-            */
-
-            num_overrun = num_overrun + e;
-            rowc = rowc + (e - 1);
-            maxchars = wchars;
-        } else {
-            if linelen > maxchars {
-                maxchars = linelen;
-            }
-        }
-
-        if line_num > maxline {
-            maxline = line_num;
-        }
-
-        cont.push(line);
     }
-    nchars = maxchars;
+    let nchars : isize = maxwidth as isize;
 
-    let ndigits: usize;
+/*
+    view_chunk("full", &fullrow);
+*/
+
+    let ndigits: isize;
     if linenumwidth == DIME_AUTO {
-        ndigits = if rowc <= 0 { 1 } else { rowc.ilog10() + 1 } as usize;
+        ndigits = if crow <= 0 { 1 } else { crow.ilog10() + 1 } as isize;
     } else {
-        ndigits = linenumwidth;
+        ndigits = linenumwidth as isize;
     }
 
     eprintln!(
@@ -471,31 +685,44 @@ fn fwtype(
         csize.width, csize.height, lineheight
     );
     eprintln!(
-        "nchars {} linec {} rowc {} num_overrun {} basedrift_a {} ndigts {}",
-        nchars, linec, rowc, num_overrun, basedrift_a, ndigits
+        "nchars {} cline {} crow {} basedrift_a {} ndigts {}",
+        nchars, cline, crow, basedrift_a, ndigits
     );
     /*
+    panic!();
      */
 
-    let numwid = if donumbering {
-        csize.width * ndigits
-    } else {
-        0
-    };
-    let txoffset: usize = if donumbering {
-        outmargin + numwid + sepmargin
-    } else {
-        0
-    };
-    let txwidth: usize = outmargin + nchars * csize.width + outmargin;
-    let cvwidth: usize = txoffset + txwidth;
-    let cvheight: usize = rowc * lineheight + outmargin * 2;
+    eprintln!("outmagin {} sepmargin {}", outmargin, sepmargin);
 
+    let numwid: isize = if donumbering {
+        (csize.width as isize) * ndigits
+    } else {
+        0
+    };
+
+    eprintln!("numwid {}", numwid);
+
+    let txoffset: isize = if donumbering {
+        outmargin as isize + numwid + sepmargin as isize
+    } else {
+        0
+    };
+    let txwidth: isize = (outmargin as isize) + 
+                nchars * (csize.width as isize) + (outmargin as isize);
+    let cvwidth: isize = txoffset + txwidth;
+/*
+    let cvheight: isize = rowc * lineheight + (outmargin as usize * 2) as isize;
+*/
+    let cvheight: isize = (crow as usize * lineheight + outmargin * 2) as isize;
+    eprintln!("txwidth {} cvwidth {} cvheight {}", txwidth, cvwidth, cvheight);
+
+/*
     let mut x;
     let mut y;
     let mut c;
     let mut q;
     let mut rinline;
+*/
 
     println!("");
 
@@ -597,22 +824,22 @@ fn fwtype(
         println!("\\linethickness{{0.1pt}}");
 
         for gx in 0..=nchars {
-            if gx % gridhpitch == 0 {
+            if gx % (gridhpitch as isize) == 0 {
                 println!(
                     "  \\put({},{}){{\\line(0,1){{ {} }} }}",
-                    txoffset + outmargin + gx * csize.width,
+                    txoffset + (outmargin + (gx as usize) * csize.width) as isize,
                     cvheight * 0,
                     cvheight
                 );
             }
         }
 
-        for gy in 0..=rowc {
-            if gy % gridvpitch == 0 {
+        for gy in 0..=crow {
+            if gy % (gridvpitch as isize) == 0 {
                 println!(
                     "  \\put({},{}){{\\line(1,0){{ {} }} }}",
                     txoffset,
-                    cvheight - (outmargin + gy * lineheight),
+                    cvheight - (outmargin + (gy as usize) * lineheight) as isize,
                     txwidth
                 );
             }
@@ -623,204 +850,117 @@ fn fwtype(
 
     println!("% body");
 
-    linec = 0;
-    rowc = 0;
-    for line0 in cont {
-        let mut p: usize;
-        let mut line = line0;
-        let mut shifted = 0;
-        rinline = 1;
+    let mut gline = 1;
+    let mut gx : isize;
+    let mut gy : isize;
+    for r in fullrow {
+        gy = cvheight as isize - (lineheight * gline) as isize
+                - outmargin as isize;
+/*
+eprintln!("gline {} gy {}", gline, gy);
+*/
 
-        loop {
-            let xcn = line.chars().count();
+        if donumbering {
+            if r.lineno > 0 {
 
-            /*
-            eprintln!("row {} {}-{}: |{}|", rowc, linec, rinline, line);
-            */
-            /*
-            eprintln!("line {} {}-{}: |{}|", linec, rowc, rinline, line);
-            */
-
-            /*
-                        eprintln!("linec {} rowc {}; {} - {} - {}; xcn {}", linec, rowc,
-                                cvheight,
-                                lineheight*(rowc+1),
-                                outmargin,
-                                xcn);
-            */
-
-            /*
-             */
-
-            y = cvheight - lineheight * (rowc + 1) - outmargin;
-            rowc = rowc + 1;
-
-            if donumbering {
-                if rinline == 1 {
-                    let numstr = format!("{:>width$}", linenumoffset + linec + 1, width = ndigits);
-                    c = 0;
+                    let numstr = format!("{:>width$}",
+                                linenumoffset + r.lineno as usize,
+                                width = ndigits as usize);
+                    let mut c = 0;
                     for ch in numstr.chars() {
-                        x = outmargin + csize.width * c;
-                        if ch == ' ' {
-                            //                          println!("%skip");
-                            //                          println!(" \\FA{{{}}}{{{}}}{{{}}}", x, y, "-");
-                        } else {
-                            println!("{{\\numfont\\FA{{{}}}{{{}}}{{{}}}}}", x, y, ch);
+                        gx = (outmargin + csize.width * c) as isize;
+                        if ch != ' ' {
+                            println!("{{\\numfont\\FA{{{}}}{{{}}}{{{}}}}}", 
+                                gx, gy, ch);
                         }
-                        c = c + 1;
+                        c += 1;
                     }
-                } else {
-                    x = outmargin + csize.width * (ndigits - 1);
-                    println!("{{\\numfont\\FA{{{}}}{{{}}}{{{}}}}}", x, y, "-");
-                }
+
             }
+                
+        }
 
-            if xcn == 0 {
-                /*
-                eprintln!("empty line {} row {}", linec, rowc);
-                */
-                //              rowc = rowc + 0;
-                break;
-            }
-
-            c = 0;
-            q = 0;
-            p = 0;
-            let mut ch: char;
-            loop {
-                if line.len() <= 0 {
-                    break;
-                }
-                if let Some(foo) = line[p..].chars().next() {
-                    ch = foo;
-                    p += ch.len_utf8();
-                } else {
-                    break;
-                }
-                let x = txoffset + outmargin + csize.width * c;
-
-                if ch.is_ascii() {
-                    if ch == ' ' {
-                        // skip space
-                        if dospcmarking {
-                            println!(
-                                " \\FA{{{}}}{{{}}}{{\\spcmark}}",
-                                x,
-                                (y as isize) - basedrift_a
-                            );
-                        }
-                    } else if ch == '\t' {
-                        // skip tab
-                        //                  println!("% skip tab");
-                        if (c + 1) % tabstop == 0 {
-                        } else {
-                            c = (((c) / tabstop) * tabstop + tabstop) - 1;
-                        }
-                    } else if ch == '\x1d' {
-                        if line.len() <= 0 {
-                            println!(
-                                " \\FA{{{}}}{{{}}}{{{}}}",
-                                x,
-                                (y as isize) - basedrift_a,
-                                "\\P"
-                            );
-                            break;
-                        }
-                        /*
-                        eprintln!("ch |{:?}| p {}", ch, p);
-                        */
-                        if let Some(label) = line[p..].chars().next() {
-                            p += label.len_utf8();
-
-                            println!(
-                                " \\FA{{{}}}{{{}}}{{\\fbox{{\\hbox to 2em{{\\hss\\VV{{}}{}\\hss}}}}}}",
-                                x + 3 * csize.width / 2,
-                                (y as isize) - basedrift_a,
-                                label
-                            );
-                            c = c + 3;
-                            q = q + 1;
-                        }
-                    } else {
+        gx = txoffset + outmargin as isize;
+        for tk in r.tokens {
+            match tk.kind {
+            TokenKind::Ascii(ch) => {
                         let mut och: String = "".to_string();
-                        if let Some(_x) = cmdchars.find(ch) {
-                            if ch == '\\' {
+                        if let Some(_x) = cmdchars.find(&ch) {
+                            if ch == "\\" {
                                 och.push_str("\\textbackslash");
                             } else {
                                 och.push('\\');
-                                och.push(ch);
+                                och.push_str(&ch);
                             }
                         } else {
-                            och.push(ch);
+                            if ch == " " {
+                                if dospcmarking {
+                                    println!(
+                                        " \\FA{{{}}}{{{}}}{{\\spcmark}}",
+                                        gx,
+                                        (gy as isize) - basedrift_a*0
+                                    );
+                                }
+                            }
+                            else {
+                                och.push_str(&ch);
+                            }
                         }
-                        println!(
-                            " \\FA{{{}}}{{{}}}{{{}}}",
-                            x,
-                            (y as isize) - basedrift_a,
-                            och
-                        );
-                    }
-                } else {
+                    
+                    println!(
+                        " \\FA{{{}}}{{{}}}{{{}}}",
+                        gx,
+                        (gy as isize) - basedrift_a*0,
+                        och
+                    );
+                },
+            TokenKind::Misc(ch) => {
                     println!(
                         " \\FX{{{}}}{{{}}}{{{}}}",
-                        x + csize.width / 2,
-                        (y as isize) - basedrift_a,
+                        gx + (csize.width as isize) / 2,
+                        (gy as isize) - basedrift_a*0,
                         ch
                     );
-                    c = c + 1;
-                }
-                c = c + 1;
-
-                q = q + 1;
-
-                if c > wchars {
-                    /*
-                    eprintln!("overrun mark {}/{}", c, wchars);
-                    */
-                    println!("\\thicklines");
-                    println!("\\linethickness{{3pt}}");
+                },
+            TokenKind::Escape(_) =>  {
+            },
+            TokenKind::Skip =>  {
+            },
+            TokenKind::Hole(label) => {
                     println!(
-                        " \\put({},{}){{\\line(0,1){{ {} }}}}",
-                        txoffset + txwidth,
-                        y + lineheight / 8,
-                        6 * lineheight / 8
+                        " \\FA{{{}}}{{{}}}{{\\fbox{{\\hbox to 2em{{\\hss
+\\VV{{}}{}\\hss}}}}}}",
+                        gx + 3 * (csize.width as isize) / 2,
+                        (gy as isize) - basedrift_a*0,
+                        label
                     );
-                    println!("\\thinlines");
-                    break;
-                }
             }
-
-            /*
-            eprintln!("loop end linec {} rowc {}; xcn {} c {} wchars {}; shifted {}",
-                linec, rowc, xcn, c, wchars, shifted);
-            */
-
-            if c >= wchars {
-                /*
-                eprintln!("skip q {}; xcn {} c {} wchars {}; shifted {}",
-                    q, xcn, c, wchars, shifted);
-                eprintln!("skip before |{}|", line);
-                */
-                line = line.chars().skip(q).collect();
-                shifted = shifted + q;
-                /*
-                eprintln!("skip after  |{}| shifted {}", line, shifted);
-                */
-
-                let xcn = line.chars().count();
-                if xcn == 0 {
-                    break;
-                }
-            } else {
-                break;
+            _ => {},
             }
-
-            rinline = rinline + 1;
+            gx += tk.width * csize.width as isize;
         }
 
-        linec = linec + 1;
+    
+        if r.setret {
+            
+/*
+                    println!(
+                        " \\put({},{}){{{}}}",
+                        txoffset + txwidth,
+                        (gy as isize) - basedrift_a*0,
+                        "$\\hookleftarrow$");
+*/
+            
+                    println!(
+                        " \\FA{{{}}}{{{}}}{{{}}}",
+                        txoffset + txwidth,
+                        (gy as isize) - basedrift_a*0,
+                        "$\\ast$");
 
-        //let new_s: String = s.chars().skip(n).collect();
+        }
+
+
+        gline += 1;
     }
 
     println!("\\end{{picture}}");
@@ -857,7 +997,7 @@ pub fn run(config: Config) -> MyResult<()> {
                     config.sepmargin,
                     config.frames,
                     config.tabstop,
-                    config.wchars,
+                    config.wlimit,
                     config.basedrift_a,
                     config.gridhpitch,
                     config.gridvpitch,

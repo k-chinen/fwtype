@@ -1,4 +1,10 @@
 /target
 /.bk
+.bk
+*.bak
 :w
 :
+*.swp
+*.swo
+*.swn
+*~
