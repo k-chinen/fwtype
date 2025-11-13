@@ -84,8 +84,8 @@ impl TokenKind {
             TokenKind::Ascii(s) => format!("a{:?}", s),
             TokenKind::Misc(s) => format!("m{:?}", s),
             TokenKind::Hole(s) => format!("h{:?}", s),
-            TokenKind::Skip => format!("skip"),
-            TokenKind::_Nop => format!("nop"),
+            TokenKind::Skip => "skip".to_string(),
+            TokenKind::_Nop => "nop".to_string(),
         }
     }
 }
@@ -252,7 +252,6 @@ fn parse_line(rawstr: &str, tabstop: isize, wcolumn: isize) -> RowChunk {
             x = 0;
 
             _y += 1;
-        } else {
         }
         x += tk.width;
         currow.tokens.push(tk);
@@ -638,9 +637,9 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
 
     eprintln!("lnooffset {}", lnooffset);
 
-    println!("");
+    println!();
 
-    if param.abovegap == "" {
+    if param.abovegap.is_empty() {
     } else {
         println!("\\vspace*{{{}}} % above", param.abovegap);
     }
@@ -750,7 +749,7 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
                 println!(
                     "  \\put({},{}){{\\line(0,1){{ {} }} }}",
                     geo.txoffset + (param.outmargin + (gx as usize) * param.csize.width) as isize,
-                    geo.cvheight * 0,
+                    0,
                     geo.cvheight
                 );
             }
@@ -777,25 +776,21 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
     let mut gx: isize;
     let mut gy: isize;
     for r in chunk {
-        gy = cvheight as isize - (param.lheight * gline) as isize - param.outmargin as isize;
+        gy = cvheight - (param.lheight * gline) as isize - param.outmargin as isize;
         /*
         eprintln!("gline {} gy {}", gline, gy);
         */
 
-        if param.numbering {
-            if r.lineno > 0 {
-                let numstr = format!(
-                    "{:>width$}",
-                    param.lnooffset + r.lineno as usize,
-                    width = geo.ndigits as usize
-                );
-                let mut c = 0;
-                for ch in numstr.chars() {
-                    gx = (param.outmargin + param.numcsize.width * c) as isize;
-                    if ch != ' ' {
-                        println!("{{\\numfont\\FA{{{}}}{{{}}}{{{}}}}}", gx, gy, ch);
-                    }
-                    c += 1;
+        if param.numbering && r.lineno > 0 {
+            let numstr = format!(
+                "{:>width$}",
+                param.lnooffset + r.lineno as usize,
+                width = geo.ndigits as usize
+            );
+            for (c, ch) in numstr.chars().enumerate() {
+                gx = (param.outmargin + param.numcsize.width * c) as isize;
+                if ch != ' ' {
+                    println!("{{\\numfont\\FA{{{}}}{{{}}}{{{}}}}}", gx, gy, ch);
                 }
             }
         }
@@ -812,32 +807,21 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
                             och.push('\\');
                             och.push_str(&ch);
                         }
-                    } else {
-                        if ch == " " {
-                            if param.spcmarking {
-                                println!(
-                                    " \\FA{{{}}}{{{}}}{{\\spcmark}}",
-                                    gx,
-                                    (gy as isize) - param.braise
-                                );
-                            }
-                        } else {
-                            och.push_str(&ch);
+                    } else if ch == " " {
+                        if param.spcmarking {
+                            println!(" \\FA{{{}}}{{{}}}{{\\spcmark}}", gx, gy - param.braise);
                         }
+                    } else {
+                        och.push_str(&ch);
                     }
 
-                    println!(
-                        " \\FA{{{}}}{{{}}}{{{}}}",
-                        gx,
-                        (gy as isize) - param.braise,
-                        och
-                    );
+                    println!(" \\FA{{{}}}{{{}}}{{{}}}", gx, gy - param.braise, och);
                 }
                 TokenKind::Misc(ch) => {
                     println!(
                         " \\FX{{{}}}{{{}}}{{{}}}",
                         gx + (param.csize.width as isize) / 2,
-                        (gy as isize) - param.braise * 0,
+                        gy,
                         ch
                     );
                 }
@@ -848,7 +832,7 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
                         " \\FA{{{}}}{{{}}}{{\\fbox{{\\hbox to 2em{{\\hss
 \\VV{{}}{}\\hss}}}}}}",
                         gx + 3 * (param.csize.width as isize) / 2,
-                        (gy as isize) - param.braise * 0,
+                        gy,
                         label
                     );
                 }
@@ -861,7 +845,7 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
             println!(
                 " \\FR{{{}}}{{{}}}",
                 geo.txoffset + geo.txwidth - (param.outmargin as isize) / 2,
-                (gy as isize) - param.braise * 0
+                gy
             );
         }
 
@@ -871,7 +855,7 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
     println!("\\end{{picture}}");
     println!("}}");
 
-    if param.belowgap == "" {
+    if param.belowgap.is_empty() {
     } else {
         println!("\\vspace*{{{}}} % below", param.belowgap);
     }
@@ -879,7 +863,7 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
     if param.pagebreaking {
         println!("\\newpage");
     }
-    println!("");
+    println!();
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -924,7 +908,7 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
     let mut cline: isize = 0;
     let mut crow: isize = 0;
 
-    for (_line_num, line_result) in fp.lines().enumerate() {
+    for line_result in fp.lines() {
         let line = line_result.unwrap();
         /*
         eprintln!("; line |{}|", line);
@@ -935,21 +919,18 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
         eprintln!("; {} chunk {:?}", _line_num, chunk);
         */
         cline += 1;
-        let mut r_per_i = 0;
-        for mut x in chunk {
+        for (r_per_i, mut x) in chunk.into_iter().enumerate() {
             if x.width > maxwidth {
                 maxwidth = x.width;
             }
             if r_per_i == 0 {
-                x.lineno = cline as isize;
-            } else {
+                x.lineno = cline;
             }
             fullrow.push(x);
             crow += 1;
-            r_per_i += 1;
         }
     }
-    geo.nchars = maxwidth as isize;
+    geo.nchars = maxwidth;
 
     /*
         view_chunk("full", &fullrow);
@@ -1017,7 +998,7 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
     lineoffset = 0;
     loop {
         //        eprintln!("lineperpage {}", lineperpage);
-        if fullrow.len() == 0 {
+        if fullrow.is_empty() {
             break;
         }
 
@@ -1058,7 +1039,7 @@ pub fn run(config: Config) -> MyResult<()> {
         println!("\\par %%% fwtypw-opt");
     }
 
-    for (_file_num, filename) in config.files.iter().enumerate() {
+    for filename in config.files.iter() {
         match open(filename) {
             Err(err) => eprintln!("{}: {}", filename, err),
             Ok(mut file) => {
