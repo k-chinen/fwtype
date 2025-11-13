@@ -14,3 +14,7 @@ fwtype accepts ASCII and UTF-8. But it is tested only japanese.
 
 <img src="sample/ascii_japanese_mix.png">
 
+When you use -n, line numbers are added.
+
+<img src="sample/ascii_japanese_mix_wnum.png">
+
