@@ -1,0 +1,40 @@
+\documentclass{article} %%% fwtype-opt
+\begin{document} %%% fwtypw-opt
+\par %%% fwtypw-opt
+
+\noindent%
+{%
+\fboxsep=-.5pt%
+\setlength{\unitlength}{1pt}%
+\ttfamily\gtfamily%
+% csize w,h=5, 10
+\fontsize{10pt}{10pt}\selectfont%
+\def\numfont{\fontsize{6pt}{6pt}\selectfont}%
+\def\spcmark{\fontsize{6pt}{6pt}\selectfont$\triangle$}%
+\def\VV{\vrule width 0pt height 0.90em depth .25em}%
+\def\FA#1#2#3{\put(#1,#2){\makebox(5,10){\VV\mbox{#3}}}}%
+\def\FX#1#2#3{\put(#1,#2){\makebox(5,10){\VV\mbox{#3}}}}%
+\def\FR#1#2{\put(#1,#2){\makebox(5,10){\VV$\triangleright$}}}%
+\begin{picture}(60,34)
+% frame
+\thicklines
+ \put(0,0){\framebox(60,34){}}
+\thinlines
+% body
+ \FA{5}{17}{A}
+ \FA{10}{17}{S}
+ \FA{15}{17}{C}
+ \FA{20}{17}{I}
+ \FA{25}{17}{I}
+ \FX{32}{17}{は}
+ \FA{40}{17}{1}
+ \FX{47}{17}{桁}
+ \FX{7}{5}{漢}
+ \FX{17}{5}{字}
+ \FX{27}{5}{は}
+ \FA{35}{5}{2}
+ \FX{42}{5}{桁}
+\end{picture}
+}
+
+\end{document} %%% fwtypw-opt
