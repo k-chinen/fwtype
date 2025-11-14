@@ -309,7 +309,7 @@ pub fn get_args() -> MyResult<Config> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .version(long_version_static())
         .author("Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>")
-        .about("generate fix width printing for LaTeX from plain text")
+        .about("generate fixed-width printing for LaTeX from plain-text")
         .arg(
             Arg::with_name("lnooffset")
                 .short("N")
@@ -419,7 +419,7 @@ pub fn get_args() -> MyResult<Config> {
                 .short("c")
                 .long("csize")
                 .takes_value(true)
-                .help("charctor size like \"17\" or \"20x10\" in pt")
+                .help("character size, e.g., \"17\" or \"20x10\" in pt")
                 .default_value("10x5"),
         )
         .arg(
@@ -435,7 +435,7 @@ pub fn get_args() -> MyResult<Config> {
                 .short("C")
                 .long("numcsize")
                 .takes_value(true)
-                .help("charctor size of line-number like \"12x6\" in pt")
+                .help("character size of line numbers, e.g., \"12x6\" in pt")
                 .default_value("6x3"),
         )
         .arg(
@@ -443,7 +443,7 @@ pub fn get_args() -> MyResult<Config> {
                 .short("g")
                 .long("grid")
                 .takes_value(false)
-                .help("Grid. see -G and -Z options"),
+                .help("Enable grid. See -G and -Z"),
         )
         .arg(
             Arg::with_name("spcmarking")
@@ -464,7 +464,7 @@ pub fn get_args() -> MyResult<Config> {
                 .short("p")
                 .long("pagebreaking")
                 .takes_value(false)
-                .help("Pagebreak per picture. see -l option"),
+                .help("Insert a page break after each picture. See -l"),
         )
         .arg(
             Arg::with_name("standalone")
