@@ -20,8 +20,7 @@ When you use -n, line numbers are added.
 
 Here, I show usage of this program.  You can get them using -h.
 
-
-	fwtype 0.3.5 (9ff1dc2) [2025-11-14T02:01:12.960344Z]
+	fwtype 0.3.5 (35f4dc8) [2025-11-14T04:20:14.370428Z]
 	Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>
 	generate fixed-width printing for LaTeX from plain-text
 
@@ -58,3 +57,11 @@ Here, I show usage of this program.  You can get them using -h.
 
 	ARGS:
 	    <FILE>...    Input file(s) [default: -]
+
+	EXAMPLES:
+	    % fwtype input.txt
+	    % fwtype -n -u input.txt
+	    % fwtype -w 80 input.txt
+	    % fwtype -l 50 -p -n input.txt
+	    % fwtype -g -G 4 src/*.txt
+	    % fwtype -S input.txt > output.tex

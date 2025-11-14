@@ -310,6 +310,15 @@ pub fn get_args() -> MyResult<Config> {
         .version(long_version_static())
         .author("Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>")
         .about("generate fixed-width printing for LaTeX from plain-text")
+        .after_help(
+            r#"EXAMPLES:
+    % fwtype input.txt
+    % fwtype -n -u input.txt
+    % fwtype -w 80 input.txt
+    % fwtype -l 50 -p -n input.txt
+    % fwtype -g -G 4 src/*.txt
+    % fwtype -S input.txt > output.tex"#
+        )
         .arg(
             Arg::with_name("lnooffset")
                 .short("N")
