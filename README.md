@@ -20,18 +20,19 @@ When you use -n, line numbers are added.
 
 Here, I show usage of this program.  You can get them using -h.
 
-	fwtype 0.3.5 (9b2ba03) [2025-11-13T09:13:19.279741Z]
+
+	fwtype 0.3.5 (9ff1dc2) [2025-11-14T02:01:12.960344Z]
 	Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>
-	generate fix width printing for LaTeX from plain text
+	generate fixed-width printing for LaTeX from plain-text
 
 	USAGE:
 	    fwtype [FLAGS] [OPTIONS] [FILE]...
 
 	FLAGS:
-	    -g, --grid            Grid. see -G and -Z options
+	    -g, --grid            Enable grid. See -G and -Z
 	    -h, --help            Prints help information
 	    -n, --numbering       Line numbering
-	    -p, --pagebreaking    Pagebreak per picture. see -l option
+	    -p, --pagebreaking    Insert a page break after each picture. See -l
 	    -u, --spcmarking      Space marking by triangle
 	    -S, --standalone      Insert preamble and begin/end document in first
 	    -V, --version         Prints version information
@@ -40,7 +41,7 @@ Here, I show usage of this program.  You can get them using -h.
 	    -A, --above <abovegap>         above gap like ".5em" [default: ]
 	    -B, --below <belowgap>         below gap like "12pt" [default: ]
 	    -b, --braise <braise>          baseline raise for ASCII [default: 0]
-	    -c, --csize <csize>            charctor size like "17" or "20x10" in pt [default: 10x5]
+	    -c, --csize <csize>            character size, e.g., "17" or "20x10" in pt [default: 10x5]
 	    -F, --font <font>              base font [default: \ttfamily\gtfamily]
 	    -f, --frames <frames>          set of frames [default: 15]
 	    -G, --ghpitch <ghpitch>        grid pitch in horizontal [default: 5]
@@ -49,7 +50,7 @@ Here, I show usage of this program.  You can get them using -h.
 	    -l, --llimit <llimit>          line limit per picture [default: 9999]
 	    -N, --lnooffset <lnooffset>    linenumber offset [default: 0]
 	    -W, --lnowidth <lnowidth>      linenumber width [default: 99999]
-	    -C, --numcsize <numcsize>      charctor size of line-number like "12x6" in pt [default: 6x3]
+	    -C, --numcsize <numcsize>      character size of line numbers, e.g., "12x6" in pt [default: 6x3]
 	    -m, --outmargin <outmargin>    out margin width [default: 5]
 	    -s, --sepmargin <sepmargin>    sep margin width [default: 2]
 	    -t, --tabstop <tabstop>        tabstop [default: 8]
