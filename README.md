@@ -14,21 +14,24 @@ fwtype accepts ASCII and UTF-8. But it is tested only japanese.
 
 <img src="sample/ascii_japanese_mix.png">
 
+When you use -n, line numbers are added.
+
+<img src="sample/ascii_japanese_mix_wnum.png">
+
+
 In texts with many whitespace characters, this program preserves
 the original spacing and alignment,
 allowing the layout of a terminal screen to be reproduced faithfully,
 as shown in the comparison below.
 
 Using Verbatim-env.:
+
 <img src="sample/ls-F-slash-Verb.png">
 
 Using fwtype:
+
 <img src="sample/ls-F-slash-fwtype.png">
 
-
-When you use -n, line numbers are added.
-
-<img src="sample/ascii_japanese_mix_wnum.png">
 
 Here, I show usage of this program.  You can get them using -h.
 
