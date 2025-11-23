@@ -20,10 +20,10 @@ allowing the layout of a terminal screen to be reproduced faithfully,
 as shown in the comparison below.
 
 Using Verbatim-env.:
-<img src="sample/ls-F-slash-Verb.png>
+<img src="sample/ls-F-slash-Verb.png">
 
 Using fwtype:
-<img src="sample/ls-F-slash-fwtype.png>
+<img src="sample/ls-F-slash-fwtype.png">
 
 
 When you use -n, line numbers are added.
