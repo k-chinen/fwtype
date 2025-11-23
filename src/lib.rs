@@ -317,7 +317,7 @@ pub fn get_args() -> MyResult<Config> {
     % fwtype -w 80 input.txt
     % fwtype -l 50 -p -n input.txt
     % fwtype -g -G 4 src/*.txt
-    % fwtype -S input.txt > output.tex"#
+    % fwtype -S input.txt > output.tex"#,
         )
         .arg(
             Arg::with_name("lnooffset")
@@ -653,6 +653,7 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
         println!("\\vspace*{{{}}} % above", param.abovegap);
     }
 
+    println!("%% you should use \\usepackage[T1]{{fontenc}}");
     println!("\\noindent%");
     println!("{{%");
 
@@ -810,7 +811,11 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
                 TokenKind::Ascii(ch) => {
                     let mut och: String = "".to_string();
                     if let Some(_x) = cmdchars.find(&ch) {
-                        if ch == "\\" {
+                        if ch == "~" {
+                            och.push_str("\\textasciitilde");
+                        } else if ch == "^" {
+                            och.push_str("\\textasciicircum");
+                        } else if ch == "\\" {
                             och.push_str("\\textbackslash");
                         } else {
                             och.push('\\');
@@ -1043,6 +1048,7 @@ pub fn run(config: Config) -> MyResult<()> {
 
     if param.standalone {
         println!("\\documentclass{{article}} %%% fwtype-opt");
+        println!("\\usepackage[T1]{{fontenc}} %%% fwtype-opt");
         //        println!("\\usepackage{{times}} %%% fwtypw-opt");
         println!("\\begin{{document}} %%% fwtypw-opt");
         println!("\\par %%% fwtypw-opt");
