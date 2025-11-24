@@ -20,6 +20,7 @@ Unix ツールの出力をそのまま TeX に埋め込むと、空白幅やイ�
 
 - 空白・インデント・整列を正確に保持  
   - ASCII 文字は 1 セル、非 ASCII 文字は 2 セルとして扱う  
+- 標準的な LaTeX の picture 環境のみを使用（epic, eepic, \special などは不使用）
 - 行番号を任意で付加 (-n)
 - picture 環境の横幅（カラム幅）を設定可能 (-w)
 - picture 環境の行数を設定可能 (-l)
@@ -28,27 +29,13 @@ Unix ツールの出力をそのまま TeX に埋め込むと、空白幅やイ�
 - 単体でコンパイル可能な TeX 文書を生成可能 (-S)
 - グリッド線の描画を任意で追加 (-g)
 
-
 ## 使用例（Example）
 
 ### Example 1
 
-`fwtype` は ASCII と UTF-8 を扱えますが、主に日本語テキストで動作確認しています。
-
-    ASCIIは1桁
-    漢字は2桁
-
-<img src="sample/ascii_japanese_mix.png">
-
-`-n` を付けると行番号が追加されます：
-
-<img src="sample/ascii_japanese_mix_wnum.png">
-
-### Example 2
-
 `ls` の出力にはタブとスペースが混在しています。これをそのまま TeX で
-組版するとレイアウトが乱れてしまい、同様の問題は多くの Web ブラウザでも
-発生する可能性があります。
+組版するとレイアウトが乱れてしまいます。
+同様の問題は多くの Web ブラウザでも発生する可能性があります。
 
     % ls -F /
     Applications/   etc@        private/    Users/
@@ -66,6 +53,18 @@ Unix ツールの出力をそのまま TeX に埋め込むと、空白幅やイ�
 
 <img src="sample/ls-F-slash-fwtype.png">
 
+### Example 2
+
+`fwtype` は ASCII と UTF-8 を扱えますが、主に日本語テキストで動作確認しています。
+
+    ASCIIは1桁
+    漢字は2桁
+
+<img src="sample/ascii_japanese_mix.png">
+
+`-n` を付けると行番号が追加されます：
+
+<img src="sample/ascii_japanese_mix_wnum.png">
 
 ## インストール（Installation）
 
@@ -73,7 +72,7 @@ Unix ツールの出力をそのまま TeX に埋め込むと、空白幅やイ�
 
     git clone https://github.com/k-chinen/fwtype
     cd fwtype
-    cargo build –release
+    cargo build --release
 
 ## ケーススタディ（Case Study）
 

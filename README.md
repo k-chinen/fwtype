@@ -24,6 +24,7 @@ they appear on the terminal.
 
 - Precise preservation of whitespace, spacing, and alignment  
   - ASCII characters occupy 1 cell; all other characters occupy 2 cells
+- Uses only the standard LaTeX picture environment (no epic, eepic, or \special)
 - Optional line numbering (-n)
 - Configurable column width per picture (-w)
 - Configurable line count per picture (-l)
@@ -36,26 +37,16 @@ they appear on the terminal.
 
 ### Example 1
 
-`fwtype` accepts ASCII and UTF-8, but it has been tested primarily with Japanese text.
-
-    ASCIIは1桁
-    漢字は2桁
-
-<img src="sample/ascii_japanese_mix.png">
-
-When you use `-n`, line numbers are added:
-
-<img src="sample/ascii_japanese_mix_wnum.png">
-
-### Example 2
-
 The output of `ls` contains both tabs and spaces. When typeset in TeX,
 the layout becomes distorted, and the same is likely to happen in most
 web browsers.
 
     % ls -F /
-    Applications/  bin/  cores/  dev/  etc@  home@  Library/  opt/
-    private/  sbin/  System/  tmp@  Users/  usr/  var@  Volumes/
+    Applications/   etc@        private/    Users/
+    bin/        home@       sbin/       usr/
+    cores/      Library/    System/     var@
+    dev/        opt/        tmp@        Volumes/
+
 
 `fwtype` reproduces the above layout exactly, including alignment and spacing.
 
@@ -67,6 +58,18 @@ Using `fwtype`:
 
 <img src="sample/ls-F-slash-fwtype.png">
 
+### Example 2
+
+`fwtype` accepts ASCII and UTF-8, but it has been tested primarily with Japanese text.
+
+    ASCIIは1桁
+    漢字は2桁
+
+<img src="sample/ascii_japanese_mix.png">
+
+When you use `-n`, line numbers are added:
+
+<img src="sample/ascii_japanese_mix_wnum.png">
 
 ## Installation
 
@@ -74,7 +77,7 @@ Build from source:
 
     git clone https://github.com/k-chinen/fwtype
     cd fwtype
-    cargo build –release
+    cargo build --release
 
 
 ## Case Study
