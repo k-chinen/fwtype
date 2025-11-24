@@ -1,49 +1,46 @@
 # fwtype
 
-See: **[README-ja.md](README-ja.md)**
+英語版はこちら → **[README.md](README.md)**
 
-fwtype is a command-line formatter that preserves whitespace and
-terminal-style layout, allowing text to be printed or embedded in
-documents exactly as it appears in a terminal.
+fwtype は、端末で表示される空白や配置をそのまま保持した状態で、
+印刷用や TeX 文書に埋め込むための整形を行うコマンドラインツールです。
 
-For typesetting, ASCII characters are treated as having a width of 1,
-while all non-ASCII characters are treated as having a width of 2,
-ensuring stable alignment in the output.
+組版処理では、ASCII 文字を幅 1、それ以外の文字を幅 2 として扱うことで、
+安定した整列を実現しています。
 
-## Motivation
+## 動機（Motivation）
 
-When the output of Unix tools is embedded directly into TeX, the
-whitespace width, indentation, and column alignment often change,
-making it impossible to reproduce the terminal layout faithfully.
+Unix ツールの出力をそのまま TeX に埋め込むと、空白幅やインデント、
+カラムの整列が変化してしまい、端末と同じレイアウトを再現できません。
 
-fwtype is designed specifically to transfer terminal-style layout
-**correctly into TeX**, preserving whitespace and alignment exactly as
-they appear on the terminal.
+fwtype は、端末上のレイアウトを **正確に TeX に持ち込む** ために設計されており、
+空白や整列を崩すことなく出力することができます。
 
-## Features
+## 特徴（Features）
 
-- Precise preservation of whitespace, spacing, and alignment  
-  - ASCII characters occupy 1 cell; all other characters occupy 2 cells
-- Optional line numbering (-n)
-- Configurable column width per picture (-w)
-- Configurable line count per picture (-l)
-- Configurable font size (-c)
-- Configurable frame (-f)
-- Optional generation of a standalone TeX document (-S)
-- Optional grid drawing (-g)
+- 空白・インデント・整列を正確に保持  
+  - ASCII 文字は 1 セル、非 ASCII 文字は 2 セルとして扱う  
+- 行番号を任意で付加 (-n)
+- picture 環境の横幅（カラム幅）を設定可能 (-w)
+- picture 環境の行数を設定可能 (-l)
+- フォントサイズを設定可能 (-c)
+- 枠（frame）の表示を設定可能 (-f)
+- 単体でコンパイル可能な TeX 文書を生成可能 (-S)
+- グリッド線の描画を任意で追加 (-g)
 
-## Example
+
+## 使用例（Example）
 
 ### Example 1
 
-fwtype accepts ASCII and UTF-8, but it has been tested primarily with Japanese text.
+fwtype は ASCII と UTF-8 を扱えますが、主に日本語テキストで動作確認しています。
 
     ASCIIは1桁
     漢字は2桁
 
 <img src="sample/ascii_japanese_mix.png">
 
-When you use `-n`, line numbers are added:
+`-n` を付けると行番号が追加されます：
 
 <img src="sample/ascii_japanese_mix_wnum.png">
 
@@ -53,33 +50,33 @@ When you use `-n`, line numbers are added:
     Applications/  bin/  cores/  dev/  etc@  home@  Library/  opt/
     private/  sbin/  System/  tmp@  Users/  usr/  var@  Volumes/
 
-fwtype reproduces the above layout exactly, including alignment and spacing.
+fwtype は上記の整列・空白を **そのまま** 再現します。
 
-Using the Verbatim environment:
+Verbatim 環境での出力：
 
 <img src="sample/ls-F-slash-Verb.png">
 
-Using fwtype:
+fwtype の出力：
 
 <img src="sample/ls-F-slash-fwtype.png">
 
 
-## Installation
+## インストール（Installation）
 
-Build from source:
+ソースコードからビルド：
 
     git clone https://github.com/k-chinen/fwtype
     cd fwtype
     cargo build –release
 
 
-## Limitations
+## 制限事項（Limitations）
 
-- Combining characters may not align perfectly  
-- Emoji and wide-character layout can vary by platform  
-- ANSI escape sequences are not interpreted  
+- Unicode の結合文字では整列が崩れる場合があります  
+- 絵文字などの幅はプラットフォームに依存します  
+- ANSI エスケープシーケンスは解釈しません  
 
-## Help
+## ヘルプ（Help）
 
     fwtype 0.3.5 (cb87028) [2025-11-23T06:19:00.808308Z]
     Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>
