@@ -49,6 +49,10 @@ When you use `-n`, line numbers are added:
 
 ### Example 2
 
+The output of `ls` contains both tabs and spaces. When typeset in TeX,
+the layout becomes distorted, and the same is likely to happen in most
+web browsers.
+
 	% ls -F /
 	Applications/  bin/  cores/  dev/  etc@  home@  Library/  opt/
 	private/  sbin/  System/  tmp@  Users/  usr/  var@  Volumes/

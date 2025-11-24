@@ -46,9 +46,9 @@ fwtype は ASCII と UTF-8 を扱えますが、主に日本語テキストで�
 
 ### Example 2
 
-The output of `ls` contains both tabs and spaces, which causes the layout
-to break when processed by TeX. The same issue would likely occur in
-typical web browsers.
+`ls` の出力にはタブとスペースが混在しています。これをそのまま TeX で
+組版するとレイアウトが乱れてしまい、同様の問題は多くの Web ブラウザでも
+発生する可能性があります。
 
 	% ls -F /
 	Applications/	etc@		private/	Users/
