@@ -35,8 +35,8 @@ fwtype は、端末上のレイアウトを **正確に TeX に持ち込む** �
 
 fwtype は ASCII と UTF-8 を扱えますが、主に日本語テキストで動作確認しています。
 
-    ASCIIは1桁
-    漢字は2桁
+	ASCIIは1桁
+	漢字は2桁
 
 <img src="sample/ascii_japanese_mix.png">
 
@@ -46,9 +46,15 @@ fwtype は ASCII と UTF-8 を扱えますが、主に日本語テキストで�
 
 ### Example 2
 
-    % ls -F /
-    Applications/  bin/  cores/  dev/  etc@  home@  Library/  opt/
-    private/  sbin/  System/  tmp@  Users/  usr/  var@  Volumes/
+The output of `ls` contains both tabs and spaces, which causes the layout
+to break when processed by TeX. The same issue would likely occur in
+typical web browsers.
+
+	% ls -F /
+	Applications/	etc@		private/	Users/
+	bin/		home@		sbin/		usr/
+	cores/		Library/	System/		var@
+	dev/		opt/		tmp@		Volumes/
 
 fwtype は上記の整列・空白を **そのまま** 再現します。
 
@@ -65,9 +71,9 @@ fwtype の出力：
 
 ソースコードからビルド：
 
-    git clone https://github.com/k-chinen/fwtype
-    cd fwtype
-    cargo build –release
+	git clone https://github.com/k-chinen/fwtype
+	cd fwtype
+	cargo build –release
 
 
 ## 制限事項（Limitations）
@@ -78,48 +84,48 @@ fwtype の出力：
 
 ## ヘルプ（Help）
 
-    fwtype 0.3.5 (cb87028) [2025-11-23T06:19:00.808308Z]
-    Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>
-    generate fixed-width printing for LaTeX from plain-text
+	fwtype 0.3.5 (cb87028) [2025-11-23T06:19:00.808308Z]
+	Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>
+	generate fixed-width printing for LaTeX from plain-text
 
-    USAGE:
-        fwtype [FLAGS] [OPTIONS] [FILE]...
+	USAGE:
+	    fwtype [FLAGS] [OPTIONS] [FILE]...
 
-    FLAGS:
-        -g, --grid            Enable grid. See -G and -Z
-        -h, --help            Prints help information
-        -n, --numbering       Line numbering
-        -p, --pagebreaking    Insert a page break after each picture. See -l
-        -u, --spcmarking      Space marking by triangle
-        -S, --standalone      Insert preamble and begin/end document in first
-        -V, --version         Prints version information
+	FLAGS:
+	    -g, --grid            Enable grid. See -G and -Z
+	    -h, --help            Prints help information
+	    -n, --numbering       Line numbering
+	    -p, --pagebreaking    Insert a page break after each picture. See -l
+	    -u, --spcmarking      Space marking by triangle
+	    -S, --standalone      Insert preamble and begin/end document in first
+	    -V, --version         Prints version information
 
-    OPTIONS:
-        -A, --above <abovegap>         above gap like ".5em" [default: ]
-        -B, --below <belowgap>         below gap like "12pt" [default: ]
-        -b, --braise <braise>          baseline raise for ASCII [default: 0]
-        -c, --csize <csize>            character size, e.g., "17" or "20x10" in pt [default: 10x5]
-        -F, --font <font>              base font [default: \ttfamily\gtfamily]
-        -f, --frames <frames>          set of frames [default: 15]
-        -G, --ghpitch <ghpitch>        grid pitch in horizontal [default: 5]
-        -Z, --gvpitch <gvpitch>        grid pitch in vertical [default: 5]
-        -H, --lheight <lheight>        lheight; if not specified csize *1.2 [default: 99999]
-        -l, --llimit <llimit>          line limit per picture [default: 9999]
-        -N, --lnooffset <lnooffset>    linenumber offset [default: 0]
-        -W, --lnowidth <lnowidth>      linenumber width [default: 99999]
-        -C, --numcsize <numcsize>      character size of line numbers, e.g., "12x6" in pt [default: 6x3]
-        -m, --outmargin <outmargin>    out margin width [default: 5]
-        -s, --sepmargin <sepmargin>    sep margin width [default: 2]
-        -t, --tabstop <tabstop>        tabstop [default: 8]
-        -w, --wlimit <wlimit>          width limit; column per line [default: 64]
+	OPTIONS:
+	    -A, --above <abovegap>         above gap like ".5em" [default: ]
+	    -B, --below <belowgap>         below gap like "12pt" [default: ]
+	    -b, --braise <braise>          baseline raise for ASCII [default: 0]
+	    -c, --csize <csize>            character size, e.g., "17" or "20x10" in pt [default: 10x5]
+	    -F, --font <font>              base font [default: \ttfamily\gtfamily]
+	    -f, --frames <frames>          set of frames [default: 15]
+	    -G, --ghpitch <ghpitch>        grid pitch in horizontal [default: 5]
+	    -Z, --gvpitch <gvpitch>        grid pitch in vertical [default: 5]
+	    -H, --lheight <lheight>        lheight; if not specified csize *1.2 [default: 99999]
+	    -l, --llimit <llimit>          line limit per picture [default: 9999]
+	    -N, --lnooffset <lnooffset>    linenumber offset [default: 0]
+	    -W, --lnowidth <lnowidth>      linenumber width [default: 99999]
+	    -C, --numcsize <numcsize>      character size of line numbers, e.g., "12x6" in pt [default: 6x3]
+	    -m, --outmargin <outmargin>    out margin width [default: 5]
+	    -s, --sepmargin <sepmargin>    sep margin width [default: 2]
+	    -t, --tabstop <tabstop>        tabstop [default: 8]
+	    -w, --wlimit <wlimit>          width limit; column per line [default: 64]
 
-    ARGS:
-        <FILE>...    Input file(s) [default: -]
+	ARGS:
+	    <FILE>...    Input file(s) [default: -]
 
-    EXAMPLES:
-        % fwtype input.txt
-        % fwtype -n -u input.txt
-        % fwtype -w 80 input.txt
-        % fwtype -l 50 -p -n input.txt
-        % fwtype -g -G 4 src/*.txt
-        % fwtype -S input.txt > output.tex
+	EXAMPLES:
+	    % fwtype input.txt
+	    % fwtype -n -u input.txt
+	    % fwtype -w 80 input.txt
+	    % fwtype -l 50 -p -n input.txt
+	    % fwtype -g -G 4 src/*.txt
+	    % fwtype -S input.txt > output.tex
