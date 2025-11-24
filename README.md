@@ -77,6 +77,26 @@ Build from source:
     cargo build –release
 
 
+## Case Study
+
+First, generate a data file using any program
+and convert it to a TeX file with `fwtype`:
+
+    % ls -C -F / > /tmp/ls-F-out.txt
+    % fwtype /tmp/ls-F-out.txt > ls-F-out.tex
+
+Next, prepare a `main.tex` file that includes `ls-F-out.tex`:
+
+    ...
+    \input{ls-F-out}
+    ...
+
+Finally, typeset the document using your TeX workflow:
+
+    % platex main.tex
+    % dvipdfmx main.dvi
+
+
 ## Limitations
 
 - Combining characters may not align perfectly  
