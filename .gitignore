@@ -3,6 +3,7 @@
 .bk
 *.bak
 :w
+:W
 :
 *.swp
 *.swo

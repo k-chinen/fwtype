@@ -40,12 +40,36 @@ pub fn long_version_static() -> &'static str {
 }
 
 pub const DIME_AUTO: usize = 99999;
+/*
+const CSIZE_DEFAULT: &str = "10x5";
+*/
+/*
+const WMIN_DEFAULT: &str = "0";
+*/
+const WMAX_DEFAULT: usize = 53;
+const LMAX_DEFAULT: usize = 9999;
 
 fn dime_auto_str() -> &'static str {
     Box::leak(DIME_AUTO.to_string().into_boxed_str())
 }
 
 type MyResult<T> = Result<T, Box<dyn Error>>;
+
+pub fn last_number<T: std::str::FromStr>(matches: &clap::ArgMatches, name: &str, default: T) -> T {
+    matches
+        .values_of(name)
+        .and_then(|mut v| v.next_back())
+        .and_then(|s| s.parse::<T>().ok())
+        .unwrap_or(default)
+}
+
+pub fn last_string<'a>(matches: &'a clap::ArgMatches, name: &str, default: &'a str) -> String {
+    matches
+        .values_of(name)
+        .and_then(|mut v| v.next_back())
+        .unwrap_or(default)
+        .to_string()
+}
 
 #[derive(Debug, Clone)]
 struct CharSize {
@@ -277,17 +301,24 @@ pub struct Param {
     csize: CharSize,
     numcsize: CharSize,
     lheight: usize,
-    outmargin: usize,
+    inmargin: usize,
     sepmargin: usize,
     frames: usize,
     tabstop: usize,
-    wlimit: usize,
-    llimit: usize,
+    wmin: usize,
+    wmax: usize,
+    lmin: usize,
+    lmax: usize,
     braise: isize,
+    gridpitch: String,
     ghpitch: usize,
     gvpitch: usize,
+    raise: String,
+    outmargin: String,
     abovegap: String,
     belowgap: String,
+    leftgap: String,
+    rightgap: String,
     lnooffset: usize,
     lnowidth: usize,
     //
@@ -304,19 +335,39 @@ pub struct Config {
     params: Param,
 }
 
+fn arg_usize(
+    name: &'static str,
+    short: &'static str,
+    long: &'static str,
+    desc: &'static str,
+    default: usize,
+) -> Arg<'static, 'static> {
+    let def_str: &'static str = Box::leak(default.to_string().into_boxed_str());
+    //    let help: &'static str = Box::leak(format!("{desc} [default: {default}]").into_boxed_str());
+
+    Arg::with_name(name)
+        .short(short)
+        .long(long)
+        .takes_value(true)
+        .default_value(def_str)
+        .help(desc)
+}
+
 // --------------------------------------------------
 pub fn get_args() -> MyResult<Config> {
     let matches = App::new(env!("CARGO_PKG_NAME"))
         .version(long_version_static())
-        .author("Ken-ichi Chinen <k-chinen@metro-cit.ac.jp>")
+        .author("Ken-ichi Chinen https://github.com/k-chinen/fwtype")
         .about("generate fixed-width printing for LaTeX from plain-text")
         .after_help(
             r#"EXAMPLES:
     % fwtype input.txt
     % fwtype -n -u input.txt
     % fwtype -w 80 input.txt
-    % fwtype -l 50 -p -n input.txt
+    % fwtype -l 50 -p -n input.txt          # make picture by 50 lines per page
     % fwtype -g -G 4 src/*.txt
+    % fwtype -M 12pt intput.txt
+    % fwtype -U3\\lh input.txt              # raise 3 lines height
     % fwtype -S input.txt > output.tex"#,
         )
         .arg(
@@ -329,27 +380,28 @@ pub fn get_args() -> MyResult<Config> {
         )
         .arg(
             Arg::with_name("lnowidth")
-                .short("W")
                 .long("lnowidth")
                 .takes_value(true)
                 .help("linenumber width")
                 .default_value(dime_auto_str()),
         )
         .arg(
-            Arg::with_name("abovegap")
-                .short("A")
-                .long("above")
+            Arg::with_name("outmargin")
+                .short("M")
+                .long("outmargin")
                 .takes_value(true)
-                .help("above gap like \".5em\"")
-                .default_value(""),
+                .help("out margin by dimen; all/t,b/l,t,r,b (replace _ into -)")
+                .multiple(true)
+                .number_of_values(1),
         )
         .arg(
-            Arg::with_name("belowgap")
-                .short("B")
-                .long("below")
+            Arg::with_name("raise")
+                .short("U")
+                .long("raise")
                 .takes_value(true)
-                .help("below gap like \"12pt\"")
-                .default_value(""),
+                .help("raise picture by dimen; e.g., 12pt or 1cm")
+                .multiple(true)
+                .number_of_values(1),
         )
         .arg(
             Arg::with_name("tabstop")
@@ -360,37 +412,74 @@ pub fn get_args() -> MyResult<Config> {
                 .default_value("8"),
         )
         .arg(
-            Arg::with_name("ghpitch")
+            Arg::with_name("gridpitch")
                 .short("G")
-                .long("ghpitch")
+                .long("gridpitch")
                 .takes_value(true)
-                .help("grid pitch in horizontal")
-                .default_value("5"),
+                .help("grid pitch by pt; h,v")
+                .multiple(true)
+                .number_of_values(1),
+        )
+        /*
+                .arg(
+                    Arg::with_name("wmin")
+                        .short("K")
+                        .long("wmin")
+                        .takes_value(true)
+                        .help("width mininum")
+                        .default_value("0"),
+                )
+                .arg(
+                    Arg::with_name("lmin")
+                        .short("k")
+                        .long("lmin")
+                        .takes_value(true)
+                        .help("line minimum")
+                        .default_value("0"),
+                )
+        */
+        .arg(
+            Arg::with_name("wmin")
+                .short("K")
+                .long("wmin")
+                .takes_value(true)
+                .help("width min per picture")
+                .multiple(true)
+                .number_of_values(1),
         )
         .arg(
-            Arg::with_name("gvpitch")
-                .short("Z")
-                .long("gvpitch")
+            Arg::with_name("lmin")
+                .short("k")
+                .long("lmin")
                 .takes_value(true)
-                .help("grid pitch in vertical")
-                .default_value("5"),
+                .help("line min per picture")
+                .multiple(true)
+                .number_of_values(1),
         )
+        /*
         .arg(
-            Arg::with_name("llimit")
+            Arg::with_name("lmax")
                 .short("l")
-                .long("llimit")
+                .long("lmax")
                 .takes_value(true)
                 .help("line limit per picture")
                 .default_value("9999"),
         )
-        .arg(
-            Arg::with_name("wlimit")
-                .short("w")
-                .long("wlimit")
-                .takes_value(true)
-                .help("width limit; column per line")
-                .default_value("64"),
-        )
+        */
+        .arg(arg_usize(
+            "lmax",
+            "l",
+            "lmax",
+            "line max; line per picture",
+            LMAX_DEFAULT,
+        ))
+        .arg(arg_usize(
+            "wmax",
+            "w",
+            "wmax",
+            "width max; column per line",
+            WMAX_DEFAULT,
+        ))
         .arg(
             Arg::with_name("braise")
                 .short("b")
@@ -400,12 +489,13 @@ pub fn get_args() -> MyResult<Config> {
                 .default_value("0"),
         )
         .arg(
-            Arg::with_name("outmargin")
+            Arg::with_name("inmargin")
                 .short("m")
-                .long("outmargin")
+                .long("inmargin")
                 .takes_value(true)
-                .help("out margin width")
-                .default_value("5"),
+                .help("inner margin width and height by pt")
+                .multiple(true)
+                .number_of_values(1),
         )
         .arg(
             Arg::with_name("sepmargin")
@@ -428,7 +518,7 @@ pub fn get_args() -> MyResult<Config> {
                 .short("c")
                 .long("csize")
                 .takes_value(true)
-                .help("character size, e.g., \"17\" or \"20x10\" in pt")
+                .help("character size by pt; e.g., 17 or 20x10")
                 .default_value("10x5"),
         )
         .arg(
@@ -441,10 +531,12 @@ pub fn get_args() -> MyResult<Config> {
         )
         .arg(
             Arg::with_name("numcsize")
-                .short("C")
+                /*
+                                .short("C")
+                */
                 .long("numcsize")
                 .takes_value(true)
-                .help("character size of line numbers, e.g., \"12x6\" in pt")
+                .help("character size of line numbers by pt; e.g., 12x6")
                 .default_value("6x3"),
         )
         .arg(
@@ -452,7 +544,7 @@ pub fn get_args() -> MyResult<Config> {
                 .short("g")
                 .long("grid")
                 .takes_value(false)
-                .help("Enable grid. See -G and -Z"),
+                .help("Enable grid. See -G"),
         )
         .arg(
             Arg::with_name("spcmarking")
@@ -487,8 +579,9 @@ pub fn get_args() -> MyResult<Config> {
                 .short("f")
                 .long("frames")
                 .takes_value(true)
-                .help("set of frames")
-                .default_value("15"),
+                .help("set of frames <default 15>")
+                .multiple(true)
+                .number_of_values(1),
         )
         .arg(
             Arg::with_name("files")
@@ -539,17 +632,37 @@ pub fn get_args() -> MyResult<Config> {
         .transpose()
         .map_err(|e| format!("illegal tabstop -- {}", e))?;
 
-    let llimit = matches
-        .value_of("llimit")
-        .map(parse_positive_int)
-        .transpose()
-        .map_err(|e| format!("illegal llimit -- {}", e))?;
+    /*
+        let wmin = Some(0);
+        let lmin = Some(0);
+    */
+    /*
+        let wmin = matches
+            .value_of("wmin")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal wmin -- {}", e))?;
 
-    let wlimit = matches
-        .value_of("wlimit")
+        let lmin = matches
+            .value_of("lmin")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal lmin -- {}", e))?;
+    */
+
+    let lmax = matches
+        .value_of("lmax")
         .map(parse_positive_int)
         .transpose()
-        .map_err(|e| format!("illegal wlimit -- {}", e))?;
+        .map_err(|e| format!("illegal lmax -- {}", e))?;
+
+    /*
+        let wmax = matches
+            .value_of("wmax")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal wmax -- {}", e))?;
+    */
 
     let braise = matches
         .value_of("braise")
@@ -557,11 +670,13 @@ pub fn get_args() -> MyResult<Config> {
         .transpose()
         .map_err(|e| format!("illegal braise  -- {}", e))?;
 
-    let outmargin = matches
-        .value_of("outmargin")
-        .map(parse_positive_int)
-        .transpose()
-        .map_err(|e| format!("illegal outmargin width -- {}", e))?;
+    /*
+        let inmargin = matches
+            .value_of("inmargin")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal inmargin width -- {}", e))?;
+    */
 
     let sepmargin = matches
         .value_of("sepmargin")
@@ -569,23 +684,27 @@ pub fn get_args() -> MyResult<Config> {
         .transpose()
         .map_err(|e| format!("illegal sepmargin width -- {}", e))?;
 
-    let gvpitch = matches
-        .value_of("gvpitch")
-        .map(parse_positive_int)
-        .transpose()
-        .map_err(|e| format!("illegal grid v pitch -- {}", e))?;
+    /*
+        let gvpitch = matches
+            .value_of("gvpitch")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal grid v pitch -- {}", e))?;
 
-    let ghpitch = matches
-        .value_of("ghpitch")
-        .map(parse_positive_int)
-        .transpose()
-        .map_err(|e| format!("illegal grid h pitch -- {}", e))?;
+        let ghpitch = matches
+            .value_of("ghpitch")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal grid h pitch -- {}", e))?;
+    */
 
-    let frames = matches
-        .value_of("frames")
-        .map(parse_positive_int)
-        .transpose()
-        .map_err(|e| format!("illegal frame -- {}", e))?;
+    /*
+        let frames = matches
+            .value_of("frames")
+            .map(parse_positive_int)
+            .transpose()
+            .map_err(|e| format!("illegal frame -- {}", e))?;
+    */
 
     // not specified, set automatically csize.height * 1.2
     if lheight == Some(DIME_AUTO) {
@@ -596,22 +715,39 @@ pub fn get_args() -> MyResult<Config> {
         //        lnowidth = Some((csize.clone().unwrap().height*12)/10);
     }
 
-    let param = Param {
+    let mut param = Param {
         font: matches.value_of("font").unwrap().to_string(),
         csize: csize.unwrap(),
         numcsize: numcsize.unwrap(),
         lheight: lheight.unwrap(),
-        outmargin: outmargin.unwrap(),
+        //        inmargin: inmargin.unwrap(),
+        inmargin: last_number(&matches, "inmargin", 5usize),
         sepmargin: sepmargin.unwrap(),
         tabstop: tabstop.unwrap(),
-        llimit: llimit.unwrap(),
-        wlimit: wlimit.unwrap(),
+        raise: last_string(&matches, "raise", ""),
+        //        wmax: wmax.unwrap(),
+        wmax: last_number(&matches, "wmax", WMAX_DEFAULT),
+        //      wmin: wmin.unwrap(),
+        wmin: last_number(&matches, "wmin", 0usize),
+        lmax: lmax.unwrap(),
+        lmin: last_number(&matches, "lmin", 0usize),
+        //      lmin: 0,
         braise: braise.unwrap() as isize,
-        frames: frames.unwrap(),
-        ghpitch: ghpitch.unwrap(),
-        gvpitch: gvpitch.unwrap(),
-        abovegap: matches.value_of("abovegap").unwrap().to_string(),
-        belowgap: matches.value_of("belowgap").unwrap().to_string(),
+        frames: last_number(&matches, "frames", 15usize),
+        gridpitch: last_string(&matches, "gridpitch", ""),
+        ghpitch: 0,
+        gvpitch: 0,
+        outmargin: last_string(&matches, "outmargin", ""),
+        leftgap: "".to_string(),
+        abovegap: "".to_string(),
+        rightgap: "".to_string(),
+        belowgap: "".to_string(),
+        /*
+                leftgap: last_string(&matches, "leftgap", ""),
+                abovegap: last_string(&matches, "abovegap", ""),
+                rightgap: last_string(&matches, "rightgap", ""),
+                belowgap: last_string(&matches, "belowgap", ""),
+        */
         lnooffset: lnooffset.unwrap(),
         lnowidth: lnowidth.unwrap(),
         grid: matches.is_present("grid"),
@@ -620,6 +756,66 @@ pub fn get_args() -> MyResult<Config> {
         standalone: matches.is_present("standalone"),
         pagebreaking: matches.is_present("pagebreaking"),
     };
+
+    if !param.gridpitch.is_empty() {
+        let parts: Vec<_> = param.gridpitch.split(",").collect();
+        eprintln!("gpitch before {:?}", (&param.ghpitch, &param.gvpitch));
+        match parts.len() {
+            2 => {
+                param.ghpitch = parts[0].parse()?;
+                param.gvpitch = parts[1].parse()?;
+            }
+            1 => {
+                param.ghpitch = parts[0].parse()?;
+                param.gvpitch = parts[0].parse()?;
+            }
+            _ => {}
+        }
+        eprintln!("gpitch after  {:?}", (&param.ghpitch, &param.gvpitch));
+    }
+
+    if !param.outmargin.is_empty() {
+        let cooked: String = param.outmargin.replace("_", "-");
+        let parts: Vec<_> = cooked.split(",").collect();
+        eprintln!("parts {:?}", parts);
+        eprintln!(
+            "gaps before {:?}",
+            (
+                &param.leftgap,
+                &param.abovegap,
+                &param.rightgap,
+                &param.belowgap
+            )
+        );
+        match parts.len() {
+            4 => {
+                param.leftgap = parts[0].to_string();
+                param.abovegap = parts[1].to_string();
+                param.rightgap = parts[2].to_string();
+                param.belowgap = parts[3].to_string();
+            }
+            2 => {
+                param.abovegap = parts[0].to_string();
+                param.belowgap = parts[1].to_string();
+            }
+            1 => {
+                param.leftgap = parts[0].to_string();
+                param.abovegap = parts[0].to_string();
+                param.rightgap = parts[0].to_string();
+                param.belowgap = parts[0].to_string();
+            }
+            _ => {}
+        }
+        eprintln!(
+            "gaps after  {:?}",
+            (
+                &param.leftgap,
+                &param.abovegap,
+                &param.rightgap,
+                &param.belowgap
+            )
+        );
+    }
 
     Ok(Config {
         files: matches.values_of_lossy("files").unwrap(),
@@ -633,34 +829,41 @@ struct Geo {
     ndigits: isize,
     txoffset: isize,
     txwidth: isize,
+    txwmin: isize,
     cvwidth: isize,
     cvheight: isize,
+    cvhmin: isize,
 }
 
 fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &Geo, param: &Param) {
     let cmdchars = r"#$%&^_{}\\~";
-    let cvheight: isize = (chunk.len() * param.lheight + param.outmargin * 2) as isize;
+    let cvheight: isize = (chunk.len() * param.lheight + param.inmargin * 2) as isize;
 
     let mut geo: Geo = parent_geo.clone();
     geo.cvheight = cvheight; /* overwrite by current picture's height */
+    let gheight = if geo.cvhmin > cvheight {
+        geo.cvhmin
+    } else {
+        cvheight
+    };
+    eprintln!("gheight {}", gheight);
 
     eprintln!("lnooffset {}", lnooffset);
 
     println!();
 
-    if param.abovegap.is_empty() {
-    } else {
-        println!("\\vspace*{{{}}} % above", param.abovegap);
-    }
-
     println!("%% you should use \\usepackage[T1]{{fontenc}}");
-    println!("\\noindent%");
     println!("{{%");
 
-    println!("\\fboxsep=-.5pt%");
-    println!("\\setlength{{\\unitlength}}{{1pt}}%");
     println!("{}%", param.font);
-    println!("% csize w,h={}, {}", param.csize.width, param.csize.height);
+    //  println!("\\fboxsep=-.5pt%");
+    println!("\\setlength{{\\unitlength}}{{1pt}}%");
+    println!(
+        "% csize w,h={}, {}; lheight {}",
+        param.csize.width, param.csize.height, param.lheight
+    );
+    //  println!("\\def\\lh{{{}pt}}", param.lheight);
+    println!("\\newdimen\\lh\\lh=12pt");
     println!(
         "\\fontsize{{{}pt}}{{{}pt}}\\selectfont%",
         param.csize.height, param.csize.height
@@ -674,10 +877,11 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
             (2*param.csize.height/3), (2*param.csize.height/3) );
     */
     println!(
-        "\\def\\spcmark{{\\fontsize{{{}pt}}{{{}pt}}\\selectfont$\\triangle$}}%",
+        "\\def\\hsp{{\\fontsize{{{}pt}}{{{}pt}}\\selectfont$\\triangle$}}%",
         (2 * param.csize.height / 3),
         (2 * param.csize.height / 3)
     );
+    println!("\\def\\zsp{{▲}}");
 
     println!("\\def\\VV{{\\vrule width 0pt height 0.90em depth .25em}}%");
     println!(
@@ -692,7 +896,11 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
         "\\def\\FR#1#2{{\\put(#1,#2){{\\makebox({},{}){{\\VV$\\triangleright$}}}}}}%",
         param.csize.width, param.csize.height
     );
-    println!("\\begin{{picture}}({},{})", geo.cvwidth, geo.cvheight);
+    //    println!("\\begin{{picture}}({},{})", geo.cvwidth, geo.cvheight);
+    println!(
+        "\\setbox0\\hbox{{\\begin{{picture}}({},{})",
+        geo.cvwidth, gheight
+    );
 
     println!("% frame");
 
@@ -701,21 +909,30 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
     if param.numbering {
         /*
             println!(" \\put(0,0){{\\circle*{{3}}}}");
-            println!(" \\put({},0){{\\circle*{{3}}}}", outmargin);
-            println!(" \\put({},0){{\\circle*{{3}}}}", outmargin+numwid);
-            println!(" \\put({},0){{\\circle*{{3}}}}", outmargin+numwid+sepmargin);
+            println!(" \\put({},0){{\\circle*{{3}}}}", inmargin);
+            println!(" \\put({},0){{\\circle*{{3}}}}", inmargin+numwid);
+            println!(" \\put({},0){{\\circle*{{3}}}}", inmargin+numwid+sepmargin);
             //
             for i in 0..=ndigits {
                 println!(" \\put({},0){{\\line(0,1){{5}}}}",
-                    outmargin+(i as usize)*(numcsize.width as usize) );
+                    inmargin+(i as usize)*(numcsize.width as usize) );
             }
         */
     }
 
     if param.frames == 0xf {
+        /*
+                println!(
+                    " \\put({},0){{\\framebox({},{}){{}}}}",
+                    geo.txoffset, geo.txwidth, geo.cvheight
+                );
+        */
         println!(
-            " \\put({},0){{\\framebox({},{}){{}}}}",
-            geo.txoffset, geo.txwidth, geo.cvheight
+            " \\put({},{}){{\\framebox({},{}){{}}}}",
+            geo.txoffset,
+            gheight - geo.cvheight,
+            geo.txwidth,
+            geo.cvheight
         );
     } else {
         if (param.frames & 0x01) > 0 {
@@ -757,10 +974,10 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
         for gx in 0..=geo.nchars {
             if gx % (param.ghpitch as isize) == 0 {
                 println!(
-                    "  \\put({},{}){{\\line(0,1){{ {} }} }}",
-                    geo.txoffset + (param.outmargin + (gx as usize) * param.csize.width) as isize,
-                    0,
-                    geo.cvheight
+                    "  \\put({},{}){{\\line(0,1){{{}}}}}",
+                    geo.txoffset + (param.inmargin + (gx as usize) * param.csize.width) as isize,
+                    gheight - geo.cvheight,
+                    geo.cvheight //                    gheight
                 );
             }
         }
@@ -769,9 +986,10 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
         for gy in 0..=(chunk.len() as isize) {
             if gy % (param.gvpitch as isize) == 0 {
                 println!(
-                    "  \\put({},{}){{\\line(1,0){{ {} }} }}",
+                    "  \\put({},{}){{\\line(1,0){{{}}}}}",
                     geo.txoffset,
-                    geo.cvheight - (param.outmargin + (gy as usize) * param.lheight) as isize,
+                    //                    geo.cvheight - (param.inmargin + (gy as usize) * param.lheight) as isize,
+                    gheight - (param.inmargin + (gy as usize) * param.lheight) as isize,
                     geo.txwidth
                 );
             }
@@ -786,7 +1004,8 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
     let mut gx: isize;
     let mut gy: isize;
     for r in chunk {
-        gy = cvheight - (param.lheight * gline) as isize - param.outmargin as isize;
+        //        gy = cvheight - (param.lheight * gline) as isize - param.inmargin as isize;
+        gy = gheight - (param.lheight * gline) as isize - param.inmargin as isize;
         /*
         eprintln!("gline {} gy {}", gline, gy);
         */
@@ -798,14 +1017,14 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
                 width = geo.ndigits as usize
             );
             for (c, ch) in numstr.chars().enumerate() {
-                gx = (param.outmargin + param.numcsize.width * c) as isize;
+                gx = (param.inmargin + param.numcsize.width * c) as isize;
                 if ch != ' ' {
                     println!("{{\\numfont\\FA{{{}}}{{{}}}{{{}}}}}", gx, gy, ch);
                 }
             }
         }
 
-        gx = geo.txoffset + param.outmargin as isize;
+        gx = geo.txoffset + param.inmargin as isize;
         for tk in r.tokens {
             match tk.kind {
                 TokenKind::Ascii(ch) => {
@@ -823,7 +1042,7 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
                         }
                     } else if ch == " " {
                         if param.spcmarking {
-                            println!(" \\FA{{{}}}{{{}}}{{\\spcmark}}", gx, gy - param.braise);
+                            println!(" \\FA{{{}}}{{{}}}{{\\hsp}}", gx, gy - param.braise);
                         }
                     } else {
                         och.push_str(&ch);
@@ -832,12 +1051,20 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
                     println!(" \\FA{{{}}}{{{}}}{{{}}}", gx, gy - param.braise, och);
                 }
                 TokenKind::Misc(ch) => {
-                    println!(
-                        " \\FX{{{}}}{{{}}}{{{}}}",
-                        gx + (param.csize.width as isize) / 2,
-                        gy,
-                        ch
-                    );
+                    if param.spcmarking && ch == "　" {
+                        println!(
+                            " \\FX{{{}}}{{{}}}{{\\zsp}}",
+                            gx + (param.csize.width as isize) / 2,
+                            gy
+                        );
+                    } else {
+                        println!(
+                            " \\FX{{{}}}{{{}}}{{{}}}",
+                            gx + (param.csize.width as isize) / 2,
+                            gy,
+                            ch
+                        );
+                    }
                 }
                 TokenKind::Escape(_) => {}
                 TokenKind::Skip => {}
@@ -858,7 +1085,7 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
         if r.setret {
             println!(
                 " \\FR{{{}}}{{{}}}",
-                geo.txoffset + geo.txwidth - (param.outmargin as isize) / 2,
+                geo.txoffset + geo.txwidth - (param.inmargin as isize) / 2,
                 gy
             );
         }
@@ -866,13 +1093,29 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
         gline += 1;
     }
 
-    println!("\\end{{picture}}");
-    println!("}}");
+    println!("\\end{{picture}}}}");
+    println!("%");
 
-    if param.belowgap.is_empty() {
-    } else {
-        println!("\\vspace*{{{}}} % below", param.belowgap);
+    if !param.abovegap.is_empty() {
+        println!("\\vspace*{{{}}}% above", param.abovegap);
     }
+    println!("\\noindent%");
+    if !param.leftgap.is_empty() {
+        println!("\\hspace{{{}}}% left", param.leftgap);
+    }
+    if param.raise.is_empty() {
+        println!("\\copy0%");
+    } else {
+        println!("\\raise{}\\copy0%", param.raise);
+    }
+    if !param.rightgap.is_empty() {
+        println!("\\hspace{{{}}}% right", param.rightgap);
+    }
+    if !param.belowgap.is_empty() {
+        println!("\\vspace*{{{}}}% below", param.belowgap);
+    }
+
+    println!("}}%");
 
     if param.pagebreaking {
         println!("\\newpage");
@@ -884,24 +1127,15 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
 fn fwtype(fp: &mut dyn BufRead, param: &Param) {
     let mut maxwidth = 0;
 
-    /*
-    struct Geo {
-        nchars:     isize,
-        ndigits:    isize,
-        txoffset:   isize,
-        txwidth:    isize,
-        cvwidth:    isize,
-        cvheight:   isize,
-    }
-    */
-
     let mut geo = Geo {
         nchars: 0,
         ndigits: 0,
         txoffset: 0,
         txwidth: 0,
+        txwmin: 0,
         cvwidth: 0,
         cvheight: 0,
+        cvhmin: 0,
     };
 
     eprintln!(
@@ -928,7 +1162,7 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
         eprintln!("; line |{}|", line);
         */
 
-        let chunk = parse_line(&line, param.tabstop as isize, param.wlimit as isize);
+        let chunk = parse_line(&line, param.tabstop as isize, param.wmax as isize);
         /*
         eprintln!("; {} chunk {:?}", _line_num, chunk);
         */
@@ -969,7 +1203,7 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
         geo.nchars, cline, crow, param.braise
     );
 
-    eprintln!("outmagin {} sepmargin {}", param.outmargin, param.sepmargin);
+    eprintln!("inmargin {} sepmargin {}", param.inmargin, param.sepmargin);
 
     let numwid: isize = if param.numbering {
         (param.numcsize.width as isize) * (geo.ndigits + 1)
@@ -982,25 +1216,28 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
         param.numcsize.width, param.numcsize.height, geo.ndigits, numwid
     );
 
-    eprintln!("wlimit {}", param.wlimit);
-    eprintln!("llimit {}", param.llimit);
+    eprintln!("wmax {}", param.wmax);
+    eprintln!("wmin {}", param.wmin);
+    eprintln!("lmax {}", param.lmax);
+    eprintln!("lmin {}", param.lmin);
 
     geo.txoffset = if param.numbering {
-        param.outmargin as isize + numwid + param.sepmargin as isize
+        param.inmargin as isize + numwid + param.sepmargin as isize
     } else {
         0
     };
     /*
         eprintln!("txoffset {}", txoffset);
     */
-    geo.txwidth = (param.outmargin as isize)
+    geo.txwidth = (param.inmargin as isize)
         + geo.nchars * (param.csize.width as isize)
-        + (param.outmargin as isize);
+        + (param.inmargin as isize);
+    geo.txwmin = (param.inmargin as isize)
+        + (param.wmin as isize) * (param.csize.width as isize)
+        + (param.inmargin as isize);
     geo.cvwidth = geo.txoffset + geo.txwidth;
-    geo.cvheight = (crow as usize * param.lheight + param.outmargin * 2) as isize;
-    /*
-        eprintln!("txwidth {} cvwidth {} cvheight {}", txwidth, cvwidth, cvheight);
-    */
+    geo.cvheight = (crow as usize * param.lheight + param.inmargin * 2) as isize;
+    geo.cvhmin = (param.lmin * param.lheight + param.inmargin * 2) as isize;
     eprintln!("geo {:?}", geo);
 
     let mut curpic: RowChunk = Vec::new();
@@ -1019,7 +1256,7 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
         curpic.push(fullrow.remove(0));
         lineperpage += 1;
 
-        if lineperpage >= param.llimit {
+        if lineperpage >= param.lmax {
             eprintln!("call pagepring picno# {} {} lines", picno, lineperpage);
             print_picture(curpic.clone(), lineoffset, crow, &geo, param);
 
@@ -1070,7 +1307,6 @@ pub fn run(config: Config) -> MyResult<()> {
     Ok(())
 }
 
-// --------------------------------------------------
 fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {
     match filename {
         "-" => Ok(Box::new(BufReader::new(io::stdin()))),
@@ -1078,7 +1314,6 @@ fn open(filename: &str) -> MyResult<Box<dyn BufRead>> {
     }
 }
 
-// --------------------------------------------------
 fn parse_2d_int(val: &str) -> MyResult<CharSize> {
     let mut h: usize = 10;
     let mut w: usize = 5;
@@ -1105,7 +1340,6 @@ fn parse_2d_int(val: &str) -> MyResult<CharSize> {
     })
 }
 
-// --------------------------------------------------
 fn parse_positive_int(val: &str) -> MyResult<usize> {
     match val.parse() {
         Ok(n) if n > 0 => Ok(n),
@@ -1113,7 +1347,6 @@ fn parse_positive_int(val: &str) -> MyResult<usize> {
     }
 }
 
-// --------------------------------------------------
 fn parse_int(val: &str) -> MyResult<isize> {
     match val.parse() {
         Ok(n) => Ok(n),
@@ -1121,7 +1354,6 @@ fn parse_int(val: &str) -> MyResult<isize> {
     }
 }
 
-// --------------------------------------------------
 fn parse_uint(val: &str) -> MyResult<usize> {
     match val.parse() {
         Ok(n) => Ok(n),
