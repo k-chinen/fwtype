@@ -54,7 +54,7 @@ dependencies = [
 
 [[package]]
 name = "fwtype"
-version = "0.5.5"
+version = "0.5.8"
 dependencies = [
  "clap",
  "time",
