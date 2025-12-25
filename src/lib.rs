@@ -50,6 +50,7 @@ const LMAX_DEFAULT: usize = 99999;
 const LMIN_DEFAULT: usize = 0;
 const INMARGIN_DEFAULT: usize = 5;
 const FRAMES_DEFAULT: usize = 15;
+const BRAISE_DEFAULT: f64 = 0.0;
 
 fn dime_auto_str() -> &'static str {
     Box::leak(DIME_AUTO.to_string().into_boxed_str())
@@ -61,6 +62,7 @@ pub fn last_number<T: std::str::FromStr>(matches: &clap::ArgMatches, name: &str,
     matches
         .values_of(name)
         .and_then(|mut v| v.next_back())
+        .map(|s| s.replace("_", "-"))
         .and_then(|s| s.parse::<T>().ok())
         .unwrap_or(default)
 }
@@ -309,7 +311,7 @@ pub struct Param {
     wmax: usize,
     lmin: usize,
     lmax: usize,
-    braise: isize,
+    braise: f64,
     gridpitch: String,
     ghpitch: usize,
     gvpitch: usize,
@@ -367,7 +369,7 @@ pub fn get_args() -> MyResult<Config> {
     % fwtype -w 80 input.txt
     % fwtype -l 50 -p -n input.txt          # make picture by 50 lines per page
     % fwtype -g -G 4 src/*.txt
-    % fwtype -M 12pt intput.txt
+    % fwtype -M _12pt,,, intput.txt         # negative indent 12pt
     % fwtype -U3\\lh input.txt              # raise 3 lines height
     % fwtype -S input.txt > output.tex"#,
         )
@@ -614,12 +616,6 @@ pub fn get_args() -> MyResult<Config> {
         .transpose()
         .map_err(|e| format!("illegal tabstop -- {}", e))?;
 
-    let braise = matches
-        .value_of("braise")
-        .map(parse_int)
-        .transpose()
-        .map_err(|e| format!("illegal braise  -- {}", e))?;
-
     let sepmargin = matches
         .value_of("sepmargin")
         .map(parse_positive_int)
@@ -651,7 +647,8 @@ pub fn get_args() -> MyResult<Config> {
         wmin: last_number(&matches, "wmin", WMIN_DEFAULT),
         lmax: last_number(&matches, "lmax", LMAX_DEFAULT),
         lmin: last_number(&matches, "lmin", LMIN_DEFAULT),
-        braise: braise.unwrap() as isize,
+        //        braise: braise.unwrap() as isize,
+        braise: last_number(&matches, "braise", BRAISE_DEFAULT),
         frames: last_number(&matches, "frames", FRAMES_DEFAULT),
         gridpitch: last_string(&matches, "gridpitch", ""),
         ghpitch: 0,
@@ -758,7 +755,14 @@ struct Geo {
     cvhmin: isize,
 }
 
-fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &Geo, param: &Param) {
+fn print_picture(
+    filename: &str,
+    chunk: RowChunk,
+    lnooffset: usize,
+    _crow: isize,
+    parent_geo: &Geo,
+    param: &Param,
+) {
     let verbose = param.verbose;
 
     let cmdchars = r"#$%&^_{}\\~";
@@ -777,20 +781,17 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
         eprintln!("lnooffset {}", lnooffset);
     }
 
-    println!();
-
+    println!("%% filename: {}; linenumberoffset {}", filename, lnooffset);
     println!("%% you should use \\usepackage[T1]{{fontenc}}");
     println!("{{%");
 
     println!("{}%", param.font);
-    //  println!("\\fboxsep=-.5pt%");
     println!("\\setlength{{\\unitlength}}{{1pt}}%");
     println!(
         "% csize w,h={}, {}; lheight {}",
         param.csize.width, param.csize.height, param.lheight
     );
-    //  println!("\\def\\lh{{{}pt}}", param.lheight);
-    println!("\\newdimen\\lh\\lh=12pt");
+    println!("\\newdimen\\lh\\lh={}pt", param.lheight);
     println!(
         "\\fontsize{{{}pt}}{{{}pt}}\\selectfont%",
         param.csize.height, param.csize.height
@@ -807,10 +808,19 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
     println!("\\def\\zsp{{▲}}");
 
     println!("\\def\\VV{{\\vrule width 0pt height 0.90em depth .25em}}%");
-    println!(
-        "\\def\\FA#1#2#3{{\\put(#1,#2){{\\makebox({},{}){{\\VV\\mbox{{#3}}}}}}}}%",
-        param.csize.width, param.csize.height
-    );
+    if param.braise == 0.0 {
+        println!(
+            "\\def\\FA#1#2#3{{\\put(#1,#2){{\\makebox({},{}){{\\VV\\mbox{{#3}}}}}}}}%",
+            param.csize.width, param.csize.height
+        );
+    } else {
+        println!(
+            //          "\\def\\FA#1#2#3{{\\put(#1,#2){{\\makebox({},{}){{\\raise{:1}pt\\hbox{{ \\VV\\mbox{{#3}}}}}}}}}}}}%",
+            "\\def\\FA#1#2#3{{\\put(#1,#2){{\\makebox({},{}){{\\VV\\mbox{{\\raise{:1}pt\\hbox{{#3}}}}}}}}}}%",
+            param.csize.width, param.csize.height, param.braise
+        );
+    }
+
     println!(
         "\\def\\FX#1#2#3{{\\put(#1,#2){{\\makebox({},{}){{\\VV\\mbox{{#3}}}}}}}}%",
         param.csize.width, param.csize.height
@@ -945,13 +955,15 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
                         }
                     } else if ch == " " {
                         if param.spcmarking {
-                            println!(" \\FA{{{}}}{{{}}}{{\\hsp}}", gx, gy - param.braise);
+                            //                            println!(" \\FA{{{}}}{{{}}}{{\\hsp}}", gx, gy - param.braise);
+                            println!(" \\FA{{{}}}{{{}}}{{\\hsp}}", gx, gy);
                         }
                     } else {
                         och.push_str(&ch);
                     }
 
-                    println!(" \\FA{{{}}}{{{}}}{{{}}}", gx, gy - param.braise, och);
+                    //                  println!(" \\FA{{{}}}{{{}}}{{{}}}", gx, gy - param.braise, och);
+                    println!(" \\FA{{{}}}{{{}}}{{{}}}", gx, gy, och);
                 }
                 TokenKind::Misc(ch) => {
                     if param.spcmarking && ch == "　" {
@@ -1024,11 +1036,11 @@ fn print_picture(chunk: RowChunk, lnooffset: usize, _crow: isize, parent_geo: &G
     if param.pagebreaking {
         println!("\\newpage");
     }
-    println!();
+    println!("%% end {} {}", filename, lnooffset);
 }
 
 #[allow(clippy::too_many_arguments)]
-fn fwtype(fp: &mut dyn BufRead, param: &Param) {
+fn fwtype(filename: &str, fp: &mut dyn BufRead, param: &Param) {
     let mut maxwidth = 0;
     let verbose = param.verbose;
 
@@ -1172,7 +1184,7 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
 
         if lineperpage >= param.lmax {
             eprintln!("call pagepring picno# {} {} lines", picno, lineperpage);
-            print_picture(curpic.clone(), lineoffset, crow, &geo, param);
+            print_picture(filename, curpic.clone(), lineoffset, crow, &geo, param);
 
             curpic.clear();
 
@@ -1187,7 +1199,7 @@ fn fwtype(fp: &mut dyn BufRead, param: &Param) {
         if verbose {
             eprintln!("call pagepring picno# {} {} lines", picno, lineperpage);
         }
-        print_picture(curpic.clone(), lineoffset, crow, &geo, param);
+        print_picture(filename, curpic.clone(), lineoffset, crow, &geo, param);
 
         // lineoffset += lineperpage;
     }
@@ -1211,7 +1223,7 @@ pub fn run(config: Config) -> MyResult<()> {
         match open(filename) {
             Err(err) => eprintln!("{}: {}", filename, err),
             Ok(mut file) => {
-                fwtype(&mut file, &param);
+                fwtype(filename, &mut file, &param);
             }
         }
     }
@@ -1263,12 +1275,21 @@ fn parse_positive_int(val: &str) -> MyResult<usize> {
     }
 }
 
+/*
+fn parse_qint(val: &str) -> MyResult<isize> {
+    match val.replace("_","-").parse() {
+        Ok(n) => Ok(n),
+        _ => Err(From::from(val)),
+    }
+}
+
 fn parse_int(val: &str) -> MyResult<isize> {
     match val.parse() {
         Ok(n) => Ok(n),
         _ => Err(From::from(val)),
     }
 }
+*/
 
 fn parse_uint(val: &str) -> MyResult<usize> {
     match val.parse() {
